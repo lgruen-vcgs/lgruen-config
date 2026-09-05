@@ -49,5 +49,5 @@
   "skipWorkflowUsageWarning": true,
   "theme": "light",
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
+  "skipAutoPermissionPrompt": true
 }
