@@ -279,6 +279,7 @@ require('lazy').setup({
   -- Minimal autocompletion
   {
     'saghen/blink.cmp',
+    version = '1.*', -- v2 is still unstable and needs the separate blink.lib plugin
     event = 'InsertEnter',
     build = 'cargo build --release',  -- Requires Rust (cargo) installed
     dependencies = {
@@ -291,12 +292,6 @@ require('lazy').setup({
         default = { 'lsp', 'path' },
       },
     },
-  },
-
-  -- Codeium / Windsurf (free AI code completion)
-  {
-    'Exafunction/windsurf.vim',
-    event = 'BufEnter',
   },
 
   -- Telescope fuzzy finder
@@ -373,18 +368,43 @@ require('lazy').setup({
     end,
   },
 
-  -- Better syntax highlighting
+  -- Better syntax highlighting.
+  -- Uses the nvim-treesitter `main` branch API (Neovim 0.12+). Building parsers
+  -- needs the tree-sitter CLI: `brew install tree-sitter-cli`.
   {
     'nvim-treesitter/nvim-treesitter',
+    lazy = false, -- Doesn't support lazy-loading
     build = ':TSUpdate',
     config = function()
-      require('nvim-treesitter.configs').setup({
-        ensure_installed = { 'python', 'lua', 'vim', 'vimdoc', 'markdown', 'java', 'typescript', 'javascript', 'groovy' },
-        auto_install = true,
-        highlight = {
-          enable = true,
-          disable = { "groovy" },
-        },
+      local ts = require('nvim-treesitter')
+      -- No-op for parsers that are already installed
+      ts.install({ 'python', 'lua', 'vim', 'vimdoc', 'markdown', 'java', 'typescript', 'javascript', 'groovy' })
+
+      local no_highlight = { groovy = true }
+      local function start(buf, lang)
+        if not no_highlight[lang] and vim.api.nvim_buf_is_valid(buf) then
+          pcall(vim.treesitter.start, buf, lang)
+        end
+      end
+
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('user-treesitter', { clear = true }),
+        callback = function(args)
+          local lang = vim.treesitter.language.get_lang(args.match)
+          if not lang then
+            return
+          end
+          if vim.treesitter.language.add(lang) then
+            start(args.buf, lang)
+          elseif vim.list_contains(ts.get_available(), lang) then
+            -- Install missing parsers on demand (the old `auto_install = true`)
+            ts.install(lang):await(function()
+              vim.schedule(function()
+                start(args.buf, lang)
+              end)
+            end)
+          end
+        end,
       })
     end,
   },
