@@ -281,7 +281,9 @@ require('lazy').setup({
     'saghen/blink.cmp',
     version = '1.*', -- v2 is still unstable and needs the separate blink.lib plugin
     event = 'InsertEnter',
-    build = 'cargo build --release',  -- Requires Rust (cargo) installed
+    -- Requires Rust (cargo). Release builds strip debuginfo by default, and on
+    -- macOS 27 the stripped dylib fails to load ("mis-aligned LINKEDIT string pool").
+    build = 'cargo build --release --config profile.release.strip=false',
     dependencies = {
       'L3MON4D3/LuaSnip',
     },
